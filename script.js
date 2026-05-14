@@ -6,12 +6,21 @@ let go = document.getElementById("go");
 let fileInput = document.getElementById("file");
 let pwInput = document.getElementById("pw");
 let msg = document.getElementById("status");
+let clearBtn = document.getElementById("clear");
+
+function reset() {
+  fileInput.value = "";
+  pwInput.value = "";
+  clearBtn.classList.add("hidden");
+  setMsg("", false);
+}
 
 tEnc.onclick = function() {
   mode = "enc";
   tEnc.classList.add("on");
   tDec.classList.remove("on");
   go.textContent = "Encrypt";
+  reset();
 }
 
 tDec.onclick = function() {
@@ -19,6 +28,22 @@ tDec.onclick = function() {
   tDec.classList.add("on");
   tEnc.classList.remove("on");
   go.textContent = "Decrypt";
+  reset();
+}
+
+
+// show/hide clear button when a file is picked
+fileInput.onchange = function() {
+  if (fileInput.files[0]) {
+    clearBtn.classList.remove("hidden");
+  } else {
+    clearBtn.classList.add("hidden");
+  }
+}
+
+clearBtn.onclick = function() {
+  fileInput.value = "";
+  clearBtn.classList.add("hidden");
 }
 
 
@@ -32,6 +57,27 @@ theme.onclick = function() {
     document.body.classList.add("light");
     theme.textContent = "☀";
   }
+}
+
+
+// status helpers
+let fadeTimer;
+function setMsg(text, isError) {
+  clearTimeout(fadeTimer);
+  msg.textContent = text;
+  msg.classList.remove("fade");
+  if (isError) {
+    msg.classList.add("err");
+  } else {
+    msg.classList.remove("err");
+  }
+}
+
+function setMsgTemp(text) {
+  setMsg(text, false);
+  fadeTimer = setTimeout(function() {
+    msg.classList.add("fade");
+  }, 2500);
 }
 
 
@@ -61,7 +107,6 @@ async function encrypt(file, pw) {
   let data = await file.arrayBuffer();
   let cif = await crypto.subtle.encrypt({name: "AES-GCM", iv: iv}, key, data);
 
-  // pack salt + iv + cif into one blob
   let out = new Uint8Array(16 + 12 + cif.byteLength);
   out.set(salt, 0);
   out.set(iv, 16);
@@ -92,38 +137,33 @@ function download(blob, name) {
 
 
 go.onclick = async function() {
-  msg.classList.remove("err");
-
   let file = fileInput.files[0];
   let pw = pwInput.value;
 
   if (!file) {
-    msg.textContent = "File missing";
-    msg.classList.add("err");
+    setMsg("File missing", true);
     return;
   }
   if (pw.length < 8) {
-    msg.textContent = "Password too short";
-    msg.classList.add("err");
+    setMsg("Password too short", true);
     return;
   }
 
   if (mode == "enc") {
-    msg.textContent = "encrypting...";
+    setMsg("encrypting...", false);
     let blob = await encrypt(file, pw);
     download(blob, file.name + ".enc");
-    msg.textContent = "done";
+    setMsgTemp("done");
   } else {
-    msg.textContent = "decrypting...";
+    setMsg("decrypting...", false);
     try {
       let blob = await decrypt(file, pw);
       let name = file.name.replace(".enc", "");
       if (name == file.name) name = "out-" + name;
       download(blob, name);
-      msg.textContent = "done";
+      setMsgTemp("done");
     } catch(e) {
-      msg.textContent = "failed, wrong password or corrupt file";
-      msg.classList.add("err");
+      setMsg("failed, wrong password or corrupt file", true);
     }
   }
 }
