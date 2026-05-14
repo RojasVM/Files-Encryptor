@@ -2,7 +2,7 @@
 
 A web thing to encrypt files from your browser. Nothing gets uploaded anywhere, everything happens on your computer.
 
-## how to use
+## How to use
 
 1. Open index.html
 2. Pick a file
